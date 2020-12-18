@@ -1,68 +1,61 @@
-# Maintainer: Frederic Bezies <fredbezies@gmail.com>
-# Contributor: ajs124 < aur at ajs124 dot de>
-# Contributor: Devin Cofer <ranguvar{AT]archlinux[DOT}us>
-# Contributor: Tobias Powalowski <tpowa@archlinux.org>
+# Maintainer: Tobias Powalowski <tpowa@archlinux.org>
 # Contributor: Sébastien "Seblu" Luttringer <seblu@seblu.net>
 
-pkgbase=qemu-git
-_gitname=qemu
-pkgname=(qemu-git qemu-headless-git qemu-arch-extra-git qemu-headless-arch-extra-git qemu-block-{iscsi-git,rbd-git,gluster-git} qemu-guest-agent-git)
-pkgdesc="A generic and open source machine emulator and virtualizer. Git version."
-pkgver=5.1.0.r1.g672b2f2695
-pkgrel=1
-epoch=11
-arch=(i686 x86_64)
+pkgbase=qemu-patched
+pkgname=(qemu-patched qemu-headless-patched qemu-arch-extra-patched qemu-headless-arch-extra-patched
+         qemu-block-{iscsi,rbd,gluster}-patched qemu-guest-agent-patched)
+pkgdesc="A generic and open source machine emulator and virtualizer"
+pkgver=5.2.0
+pkgrel=2
+arch=(x86_64)
 license=(GPL2 LGPL2.1)
-url="http://wiki.qemu.org/"
+url="https://wiki.qemu.org/"
 _headlessdeps=(seabios gnutls libpng libaio numactl libnfs
                lzo snappy curl vde2 libcap-ng spice libcacard usbredir libslirp
-               libssh zstd liburing)
-depends=(dtc virglrenderer sdl2 vte3 libpulse brltty "${_headlessdeps[@]}")
-makedepends=(spice-protocol python ceph libiscsi glusterfs python-sphinx xfsprogs)
-source=(git://git.qemu.org/qemu.git
-        qemu-ga.service
-        65-kvm.rules)
-sha256sums=('SKIP'
-            '0b4f3283973bb3bc876735f051d8eaab68f0065502a3a5012141fad193538ea1'
-           '60dcde5002c7c0b983952746e6fb2cf06d6c5b425d64f340f819356e561e7fc7')
+               libssh zstd liburing ndctl dtc)
+depends=(virglrenderer sdl2 vte3 libpulse libjack.so brltty "${_headlessdeps[@]}")
+makedepends=(spice-protocol python ceph libiscsi glusterfs python-sphinx xfsprogs ninja)
+source=(https://download.qemu.org/qemu-$pkgver.tar.xz
+        qemu-guest-agent.service
+        65-kvm.rules
+        Add-hide-hypervisor-QMP-command.patch)
+sha512sums=('bddd633ce111471ebc651e03080251515178808556b49a308a724909e55dac0be0cc0c79c536ac12d239678ae94c60100dc124be9b9d9538340c03a2f27177f3'
+            '269c0f0bacbd06a3d817fde02dce26c99d9f55c9e3b74bb710bd7e5cdde7a66b904d2eb794c8a605bf9305e4e3dee261a6e7d4ec9d9134144754914039f176e4'
+            'bdf05f99407491e27a03aaf845b7cc8acfa2e0e59968236f10ffc905e5e3d5e8569df496fd71c887da2b5b8d1902494520c7da2d3a8258f7fd93a881dd610c99'
+            '9515ae7f503395cb9704c51fb015e91025da25d9ff262df1308b95637de98f268b6e12bebced764ce04b0228ad59838876df9fd7a23454b349e3bccbb4aca41c')
+validpgpkeys=('CEACC9E15534EBABB82D3FA03353C9CEF108B584') # Michael Roth <flukshun@gmail.com>
 
 case $CARCH in
   i?86) _corearch=i386 ;;
   x86_64) _corearch=x86_64 ;;
 esac
 
-pkgver() {
-  cd "${srcdir}/${_gitname}"
-  git describe --long --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g' | cut -c2-48
-}
-
 prepare() {
-  cd "${srcdir}/${_gitname}"
   mkdir build-{full,headless}
-  
-    qemu_hd_replacement="WDC WD20EARS"
-    qemu_dvd_replacement="DVD-ROM"
-    hypervisor_string_replacement="\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0\\0"
-    sed -i "s/QEMU HARDDISK/$qemu_hd_replacement/g" hw/ide/core.c
-    sed -i "s/QEMU HARDDISK/$qemu_hd_replacement/g" hw/scsi/scsi-disk.c
-    sed -i "s/QEMU DVD-ROM/$qemu_dvd_replacement/g" hw/ide/core.c
-    sed -i "s/QEMU DVD-ROM/$qemu_dvd_replacement/g" hw/ide/atapi.c
-    sed -i "s/QEMU PenPartner tablet/<WOOT> PenPartner tablet/g" hw/usb/dev-wacom.c
-    sed -i 's/s->vendor = g_strdup("QEMU");/s->vendor = g_strdup("<WOOT>");/g' hw/scsi/scsi-disk.c
-    sed -i "s/QEMU CD-ROM/$qemu_dvd_replacement/g" hw/scsi/scsi-disk.c
-    sed -i 's/padstr8(buf + 8, 8, "QEMU");/padstr8(buf + 8, 8, "<WOOT>");/g' hw/ide/atapi.c
-    sed -i 's/QEMU MICRODRIVE/<WOOT> MICRODRIVE/g' hw/ide/core.c
-    sed -i "s/KVMKVMKVM\\0\\0\\0/$hypervisor_string_replacement/g" target/i386/kvm.c
-    sed -i 's/"bochs"/"<WOOT>"/g' block/bochs.c
-    sed -i 's/"BOCHS "/"ALASKA"/g' include/hw/acpi/aml-build.h
-    sed -i 's/Microsoft Hv/$hypervisor_string_replacement/g' target/i386/kvm.c
   mkdir -p extra-arch-{full,headless}/usr/{bin,share/qemu}
-
+  qemu_hd_replacement="RealIO LegitHD"
+  qemu_dvd_replacement="REAL DVD-ROM"
+  hypervisor_string_replacement="REAL"
+  sed -i "s/QEMU HARDDISK/$qemu_hd_replacement/g" qemu-${pkgver}/hw/ide/core.c
+  sed -i "s/QEMU HARDDISK/$qemu_hd_replacement/g" qemu-${pkgver}/hw/scsi/scsi-disk.c
+  sed -i "s/QEMU DVD-ROM/$qemu_dvd_replacement/g" qemu-${pkgver}/hw/ide/core.c
+  sed -i "s/QEMU DVD-ROM/$qemu_dvd_replacement/g" qemu-${pkgver}/hw/ide/atapi.c
+  sed -i "s/QEMU PenPartner tablet/REAL PenPartner tablet/g" qemu-${pkgver}/hw/usb/dev-wacom.c
+  sed -i 's/s->vendor = g_strdup("QEMU");/s->vendor = g_strdup("REAL");/g' qemu-${pkgver}/hw/scsi/scsi-disk.c
+  sed -i "s/QEMU CD-ROM/$qemu_dvd_replacement/g" qemu-${pkgver}/hw/scsi/scsi-disk.c
+  sed -i 's/padstr8(buf + 8, 8, "QEMU");/padstr8(buf + 8, 8, "REAL");/g' qemu-${pkgver}/hw/ide/atapi.c
+  sed -i 's/QEMU MICRODRIVE/REAL MICRODRIVE/g' qemu-${pkgver}/hw/ide/core.c
+  sed -i "s/KVMKVMKVM\\0\\0\\0/$hypervisor_string_replacement/g" qemu-${pkgver}/target/i386/kvm.c
+  sed -i 's/"bochs"/"REAL"/g' qemu-${pkgver}/block/bochs.c
+  sed -i 's/"BOCHS "/"REAL  "/g' qemu-${pkgver}/include/hw/acpi/aml-build.h
+  sed -i 's/"BXPC"/"REAL"/g' qemu-${pkgver}/include/hw/acpi/aml-build.h
+  sed -i 's/Microsoft Hv/$hypervisor_string_replacement/g' qemu-${pkgver}/target/i386/kvm.c
+  patch -Np1 -F 3 -i ${srcdir}/Add-hide-hypervisor-QMP-command.patch -d qemu-${pkgver}
 }
 
 build() {
   _build full \
-    --audio-drv-list="pa alsa sdl"
+    --audio-drv-list="pa alsa sdl jack"
 
   _build headless \
     --audio-drv-list= \
@@ -75,9 +68,9 @@ build() {
 }
 
 _build() (
-  cd ${srcdir}/${_gitname}/build-$1
+  cd build-$1
 
-  ../configure \
+  ../qemu-${pkgver}/configure \
     --prefix=/usr \
     --sysconfdir=/etc \
     --localstatedir=/var \
@@ -86,47 +79,43 @@ _build() (
     --smbd=/usr/bin/smbd \
     --enable-modules \
     --enable-sdl \
-    --disable-werror \
-    --enable-vhost-user \
     --enable-slirp=system \
     --enable-xfsctl \
     "${@:2}"
 
-  make
+  ninja
 )
 
-package_qemu-git() {
-  optdepends=('qemu-arch-extra-git: extra architectures support')
-  conflicts=('qemu-headless' 'qemu')
+package_qemu-patched() {
+  optdepends=('qemu-arch-extra-patched: extra architectures support')
   provides=('qemu-headless' 'qemu')
+  conflicts=('qemu-headless' 'qemu')
   replaces=(qemu-kvm)
 
   _package full
 }
 
-package_qemu-headless-git() {
-  pkgdesc="QEMU without GUI. Git version."
+package_qemu-headless-patched() {
+  pkgdesc="QEMU without GUI"
   depends=("${_headlessdeps[@]}")
-  optdepends=('qemu-headless-arch-extra-git: extra architectures support')
-  conflicts=('qemu-headless')
+  optdepends=('qemu-headless-arch-extra: extra architectures support')
 
   _package headless
 }
 
 _package() {
-  optdepends+=('ovmf: Tianocore UEFI firmware for qemu'
-               'samba: SMB/CIFS server support'
-               'qemu-block-iscsi-git: iSCSI block support'
-               'qemu-block-rbd-git: RBD block support'
-               'qemu-block-gluster-git: glusterfs block support')
+  optdepends+=('samba: SMB/CIFS server support'
+               'qemu-block-iscsi-patched: iSCSI block support'
+               'qemu-block-rbd-patched: RBD block support'
+               'qemu-block-gluster-patched: glusterfs block support')
   install=qemu.install
   options=(!strip !emptydirs)
 
-  make -C ${srcdir}/${_gitname}/build-$1 DESTDIR="$pkgdir" install "${@:2}"
+  DESTDIR="$pkgdir" ninja -C build-$1 install "${@:2}"
 
   # systemd stuff
   install -Dm644 65-kvm.rules "$pkgdir/usr/lib/udev/rules.d/65-kvm.rules"
-  
+
   # remove conflicting /var/run directory
   cd "$pkgdir"
   rm -r var
@@ -141,7 +130,6 @@ _package() {
   rm qemu/block-{iscsi,rbd,gluster}.so
 
   cd ../bin
-  tidy_strip
 
   # remove extra arch
   for _bin in qemu-*; do
@@ -158,14 +146,14 @@ _package() {
       system-${_corearch}) continue ;;
     esac
 
-    mv "$_bin" "$srcdir/$_gitname/extra-arch-$1/usr/bin"
+    mv "$_bin" "$srcdir/extra-arch-$1/usr/bin"
   done
 
   cd ../share/qemu
   for _blob in *; do
     [[ -f $_blob ]] || continue
 
-   case $_blob in
+    case $_blob in
       # provided by seabios package
       bios.bin|bios-256k.bin|vgabios-cirrus.bin|vgabios-qxl.bin|\
       vgabios-stdvga.bin|vgabios-vmware.bin|vgabios-virtio.bin|vgabios-bochs-display.bin|\
@@ -173,7 +161,7 @@ _package() {
 
       # provided by edk2-ovmf package
       edk2-*) rm "$_blob"; continue ;;
-   
+
       # iPXE ROMs
       efi-*|pxe-*) continue ;;
 
@@ -182,77 +170,65 @@ _package() {
 
       # Trace events definitions
       trace-events*) continue ;;
+    esac
 
-     esac
-
-    mv "$_blob" "$srcdir/$_gitname/extra-arch-$1/usr/share/qemu"
+    mv "$_blob" "$srcdir/extra-arch-$1/usr/share/qemu"
   done
 
-   # provided by edk2-ovmf package
-   rm -r firmware
- 
-   cd ..
-   if [ "$1" = headless ]; then rm -r {applications,icons}; fi
+  # provided by edk2-ovmf package
+  rm -r firmware
+
+  cd ..
+  if [ "$1" = headless ]; then rm -r {applications,icons}; fi
 }
 
-package_qemu-arch-extra-git() {
-  pkgdesc="QEMU for foreign architectures. Git version."
+package_qemu-arch-extra-patched() {
+  pkgdesc="QEMU for foreign architectures"
   depends=(qemu)
-  provides=(qemu-arch-extra)
-  conflicts=(qemu-arch-extra)
+  provides=(qemu-headless-arch-extra)
+  conflicts=(qemu-headless-arch-extra)
   options=(!strip)
 
-  mv $srcdir/$_gitname/extra-arch-full/usr "$pkgdir"
+  mv extra-arch-full/usr "$pkgdir"
 }
 
-package_qemu-headless-arch-extra-git() {
-  pkgdesc="QEMU without GUI, for foreign architectures. Git version."
+package_qemu-headless-arch-extra-patched() {
+  pkgdesc="QEMU without GUI, for foreign architectures"
   depends=(qemu-headless)
   options=(!strip)
-  conflicts=(qemu-headless-arch-extra)
-  provides=(qemu-headless-arch-extra)
 
-  mv $srcdir/$_gitname/extra-arch-headless/usr "$pkgdir"
+  mv extra-arch-headless/usr "$pkgdir"
 }
 
-package_qemu-block-iscsi-git() {
-  pkgdesc="QEMU iSCSI block module. Git version."
+package_qemu-block-iscsi-patched() {
+  pkgdesc="QEMU iSCSI block module"
   depends=(glib2 libiscsi)
-  conflicts=(qemu-block-iscsi)
-  provides=(qemu-block-iscsi)
 
-  install -D $srcdir/$_gitname/build-full/block-iscsi.so "$pkgdir/usr/lib/qemu/block-iscsi.so"
+  install -D build-full/block-iscsi.so "$pkgdir/usr/lib/qemu/block-iscsi.so"
 }
 
-package_qemu-block-rbd-git() {
-  pkgdesc="QEMU RBD block module. Git version."
+package_qemu-block-rbd-patched() {
+  pkgdesc="QEMU RBD block module"
   depends=(glib2 ceph-libs)
-  conflicts=(qemu-block-rbd)
-  provides=(qemu-block-rbd)
 
-  install -D $srcdir/$_gitname/build-full/block-rbd.so "$pkgdir/usr/lib/qemu/block-rbd.so"
+  install -D build-full/block-rbd.so "$pkgdir/usr/lib/qemu/block-rbd.so"
 }
 
-package_qemu-block-gluster-git() {
-  pkgdesc="QEMU GlusterFS block module. Git version."
+package_qemu-block-gluster-patched() {
+  pkgdesc="QEMU GlusterFS block module"
   depends=(glib2 glusterfs)
-  conflicts=(qemu-block-gluster)
-  provides=(qemu-block-gluster)
 
-  install -D $srcdir/$_gitname/build-full/block-gluster.so "$pkgdir/usr/lib/qemu/block-gluster.so"
+  install -D build-full/block-gluster.so "$pkgdir/usr/lib/qemu/block-gluster.so"
 }
 
-package_qemu-guest-agent-git() {
-  pkgdesc="QEMU Guest Agent. Git version."
-  depends=(gcc-libs glib2 libudev.so)
-  conflicts=(qemu-guest-agent)
-  provides=(qemu-guest-agent)
+package_qemu-guest-agent-patched() {
+  pkgdesc="QEMU Guest Agent"
+  depends=(gcc-libs glib2 libudev.so liburing)
+  install=qemu-guest-agent.install
 
-  install -D $srcdir/$_gitname/build-full/qemu-ga "$pkgdir/usr/bin/qemu-ga"
-  install -Dm644 $srcdir/qemu-ga.service "$pkgdir/usr/lib/systemd/system/qemu-ga.service"
-  install -Dm755 "$srcdir/$_gitname/scripts/qemu-guest-agent/fsfreeze-hook" "$pkgdir/etc/qemu/fsfreeze-hook"
+  install -D build-full/qga/qemu-ga "$pkgdir/usr/bin/qemu-ga"
+  install -Dm644 qemu-guest-agent.service "$pkgdir/usr/lib/systemd/system/qemu-guest-agent.service"
+  install -Dm755 "$srcdir/qemu-$pkgver/scripts/qemu-guest-agent/fsfreeze-hook" "$pkgdir/etc/qemu/fsfreeze-hook"
 }
 
 # vim:set ts=2 sw=2 et:
-
-
