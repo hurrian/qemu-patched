@@ -5,21 +5,24 @@ pkgbase=qemu-patched
 pkgname=(qemu-patched qemu-headless-patched qemu-arch-extra-patched qemu-headless-arch-extra-patched
          qemu-block-{iscsi,rbd,gluster}-patched qemu-guest-agent-patched)
 pkgdesc="A generic and open source machine emulator and virtualizer"
-pkgver=5.2.0
+pkgver=6.0.0
 pkgrel=2
 arch=(x86_64)
 license=(GPL2 LGPL2.1)
 url="https://wiki.qemu.org/"
 _headlessdeps=(seabios gnutls libpng libaio numactl libnfs
                lzo snappy curl vde2 libcap-ng spice libcacard usbredir libslirp
-               libssh zstd liburing ndctl dtc)
+               libssh zstd liburing ndctl dtc fuse3)
 depends=(virglrenderer sdl2 vte3 libpulse libjack.so brltty "${_headlessdeps[@]}")
 makedepends=(spice-protocol python ceph libiscsi glusterfs python-sphinx xfsprogs ninja)
 source=(https://download.qemu.org/qemu-$pkgver.tar.xz
+	build-most-modules-statically-hack.diff
         qemu-guest-agent.service
         65-kvm.rules
         Add-hide-hypervisor-QMP-command.patch)
-sha512sums=('bddd633ce111471ebc651e03080251515178808556b49a308a724909e55dac0be0cc0c79c536ac12d239678ae94c60100dc124be9b9d9538340c03a2f27177f3'
+sha512sums=('ee3ff00aebec4d8891d2ff6dabe4e667e510b2a4fe3f6190aa34673a91ea32dcd2db2e9bf94c2f1bf05aa79788f17cfbbedc6027c0988ea08a92587b79ee05e4'
+            'SKIP'
+            '8721068fb968dbae62ceff71aa46eb4c2452c7fde95b87396b439f2f927ea84d2ee2c512264a9f28a5ccaf3096aacce052cebf209aaffd62a201b5bafb512002'
             '269c0f0bacbd06a3d817fde02dce26c99d9f55c9e3b74bb710bd7e5cdde7a66b904d2eb794c8a605bf9305e4e3dee261a6e7d4ec9d9134144754914039f176e4'
             'bdf05f99407491e27a03aaf845b7cc8acfa2e0e59968236f10ffc905e5e3d5e8569df496fd71c887da2b5b8d1902494520c7da2d3a8258f7fd93a881dd610c99'
             '9515ae7f503395cb9704c51fb015e91025da25d9ff262df1308b95637de98f268b6e12bebced764ce04b0228ad59838876df9fd7a23454b349e3bccbb4aca41c')
@@ -51,6 +54,11 @@ prepare() {
   sed -i 's/"BXPC"/"REAL"/g' qemu-${pkgver}/include/hw/acpi/aml-build.h
   sed -i 's/Microsoft Hv/$hypervisor_string_replacement/g' qemu-${pkgver}/target/i386/kvm.c
   patch -Np1 -F 3 -i ${srcdir}/Add-hide-hypervisor-QMP-command.patch -d qemu-${pkgver}
+
+  cd qemu-$pkgver
+  # https://bugs.launchpad.net/qemu/+bug/1910696
+  # the patch comes from https://salsa.debian.org/qemu-team/qemu/-/blob/master/debian/patches/build-most-modules-statically-hack.diff
+  patch -p1 < ../build-most-modules-statically-hack.diff
 }
 
 build() {
@@ -75,7 +83,6 @@ _build() (
     --sysconfdir=/etc \
     --localstatedir=/var \
     --libexecdir=/usr/lib/qemu \
-    --extra-ldflags="$LDFLAGS" \
     --smbd=/usr/bin/smbd \
     --enable-modules \
     --enable-sdl \
