@@ -7,10 +7,10 @@ Incorporates [dynamic hypervisor flag hiding by PiMaker](https://gist.github.com
 
 # Install
 1. Clone
-1. Change string values in ``PKGBUILD`` to be unique
+1. Change string values in ``qemu_hide_hv_qmp_disable.patch`` to be unique
 1. Build with dependencies ``makepkg -s`` (double check /etc/makepkg.conf for parallel compilation or this will take forever)
 1. Install with pacman ``pacman -U qemu-git-<version>.pkg.tar.zst``
 
 # Usage
-To hide hypervisor flags in CPUID:
-```qemu-monitor-command --domain win --cmd '{"execute": "hide-hypervisor"}'```
+To toggle hypervisor flags in CPUID:
+```qemu-monitor-command --domain win --cmd '{"execute": "toggle-hypervisor"}'```
